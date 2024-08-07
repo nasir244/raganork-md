@@ -45,7 +45,36 @@
 1. Install nodejs, git, ffmpeg
 2. npm i -g yarn pm2
 3. git clone https://github.com/souravkl11/raganork-md && cd raganork-md
-4. yarn install --ignore-engines --network-concurrency 1
+4. yarn install --ignore-engines -import makeWASocket, { DisconnectReason } from '@whiskeysockets/baileys'
+import { Boom } from '@hapi/boom'
+
+async function connectToWhatsApp () {
+    const sock = makeWASocket({
+        // can provide additional config here
+        printQRInTerminal: true
+    })
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect } = update
+        if(connection === 'close') {
+            const shouldReconnect = (lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut
+            console.log('connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect)
+            // reconnect if not logged out
+            if(shouldReconnect) {
+                connectToWhatsApp()
+            }
+        } else if(connection === 'open') {
+            console.log('opened connection')
+        }
+    })
+    sock.ev.on('messages.upsert', m => {
+        console.log(JSON.stringify(m, undefined, 2))
+
+        console.log('replying to', m.messages[0].key.remoteJid)
+        await sock.sendMessage(m.messages[0].key.remoteJid!, { text: 'Hello there!' })
+    })
+}
+// run in main file
+connectToWhatsApp()-network-concurrency 1
 5. vi config.env
 6. Enter your session there in format 'SESSION=your_session_here'
 7. Press ctrl+c, then type ':wq' and press enter
